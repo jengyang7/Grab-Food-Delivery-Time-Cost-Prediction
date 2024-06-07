@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import pickle
 import base64
+import sklearn
 
 # Title of the Streamlit app
 st.title('Grab Food Delivery Time & Cost Prediction App')
