@@ -10,8 +10,9 @@ st.write('Model used: Random Forest Regressor')
 # Function to load the trained model
 @st.cache_data
 def load_model(model_path):
-    with open(model_path, 'rb') as f:
-        model = pickle.load(f)
+    # with open(model_path, 'rb') as f:
+    #     model = pickle.load(f)
+    model = pickle.load(open(model_path, 'rb'))
     return model
 
 # Function to load the test dataset
