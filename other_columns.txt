@@ -1,0 +1,6 @@
+name
+address
+delivery_options
+loc_type
+delivery_by
+region
