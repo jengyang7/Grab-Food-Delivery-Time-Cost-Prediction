@@ -77,10 +77,21 @@ def preprocess_data(df):
     # Replace 'Yes'/'No' with 1/0 in 'promo' column
     df_encoded['promo'] = df_encoded['promo'].replace({'Yes': 1, 'No': 0})
 
-    # Ensure all final columns are present in the DataFrame
+    # # Ensure all final columns are present in the DataFrame
+    # for col in final_columns:
+    #     if col not in df_encoded.columns:
+    #         df_encoded[col] = 0
+
+    # Create a new DataFrame with concatenated columns
+    concatenated_columns = [df_encoded]  # Start with the existing DataFrame
     for col in final_columns:
         if col not in df_encoded.columns:
-            df_encoded[col] = 0
+            # Add a new DataFrame with the missing column
+            new_column = pd.DataFrame({col: [0] * len(df_encoded)}, index=df_encoded.index)
+            concatenated_columns.append(new_column)
+
+    # Concatenate all DataFrames along axis 1
+    df_encoded = pd.concat(concatenated_columns, axis=1)
 
     # Ensure the DataFrame has the same column order as the final columns
     df_encoded = df_encoded[final_columns]
