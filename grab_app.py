@@ -38,8 +38,11 @@ st.download_button(
 )
 
 # OneDrive shareable links for the models
-time_model_url = 'https://365umedumy-my.sharepoint.com/:u:/g/personal/22115126_siswa365_um_edu_my/EZza65faJadIlNaqdDICbaYBBldgw_FikLhqn09Mwp1CqA?e=2POuqZ'  # Replace with your actual OneDrive shareable link
-cost_model_url = 'https://365umedumy-my.sharepoint.com/:u:/g/personal/22115126_siswa365_um_edu_my/EVKy-M-FrPZLsc7Quctc-soBEkgS_UH32O7Qr7rN_RdIqg?e=A3UMMT'  # Replace with your actual OneDrive shareable link
+# time_model_url = 'https://365umedumy-my.sharepoint.com/:u:/g/personal/22115126_siswa365_um_edu_my/EZza65faJadIlNaqdDICbaYBBldgw_FikLhqn09Mwp1CqA?e=2POuqZ'  # Replace with your actual OneDrive shareable link
+# cost_model_url = 'https://365umedumy-my.sharepoint.com/:u:/g/personal/22115126_siswa365_um_edu_my/EVKy-M-FrPZLsc7Quctc-soBEkgS_UH32O7Qr7rN_RdIqg?e=A3UMMT'  # Replace with your actual OneDrive shareable link
+
+time_model_url = 'https://365umedumy-my.sharepoint.com/:u:/g/personal/22115126_siswa365_um_edu_my/EZza65faJadIlNaqdDICbaYBBldgw_FikLhqn09Mwp1CqA?download=1'
+cost_model_url = 'https://365umedumy-my.sharepoint.com/:u:/g/personal/22115126_siswa365_um_edu_my/EVKy-M-FrPZLsc7Quctc-soBEkgS_UH32O7Qr7rN_RdIqg?download=1'
 
 # Paths to save the downloaded models
 time_model_path = 'rf_best_time.pkl'
