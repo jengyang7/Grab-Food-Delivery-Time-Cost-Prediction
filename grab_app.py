@@ -1,19 +1,22 @@
 import streamlit as st
 import pandas as pd
 import pickle
-import base64
-import sklearn
+import requests
+import os
 
 # Title of the Streamlit app
 st.title('Grab Food Delivery Time & Cost Prediction App')
 st.write('Model used: Random Forest Regressor')
 
-# Function to load the trained model
+# Function to download and load the trained model
 @st.cache_data
-def load_model(model_path):
-    # with open(model_path, 'rb') as f:
-    #     model = pickle.load(f)
-    model = pickle.load(open(model_path, 'rb'))
+def download_and_load_model(url, model_path):
+    if not os.path.exists(model_path):
+        response = requests.get(url)
+        with open(model_path, 'wb') as f:
+            f.write(response.content)
+    with open(model_path, 'rb') as f:
+        model = pickle.load(f)
     return model
 
 # Function to load the test dataset
@@ -34,12 +37,17 @@ st.download_button(
     mime='text/csv',
 )
 
-# Load the trained model
-time_model_path = 'rf_best_time.pkl'  
-time_model = load_model(time_model_path)
+# OneDrive shareable links for the models
+time_model_url = 'https://365umedumy-my.sharepoint.com/:u:/g/personal/22115126_siswa365_um_edu_my/EZza65faJadIlNaqdDICbaYBBldgw_FikLhqn09Mwp1CqA?e=2POuqZ'  # Replace with your actual OneDrive shareable link
+cost_model_url = 'https://365umedumy-my.sharepoint.com/:u:/g/personal/22115126_siswa365_um_edu_my/EVKy-M-FrPZLsc7Quctc-soBEkgS_UH32O7Qr7rN_RdIqg?e=A3UMMT'  # Replace with your actual OneDrive shareable link
 
-cost_model_path = 'rf_best_cost.pkl'  
-cost_model = load_model(cost_model_path)
+# Paths to save the downloaded models
+time_model_path = 'rf_best_time.pkl'
+cost_model_path = 'rf_best_cost.pkl'
+
+# Download and load the trained models
+time_model = download_and_load_model(time_model_url, time_model_path)
+cost_model = download_and_load_model(cost_model_url, cost_model_path)
 
 # Load unique cuisines
 with open('unique_cuisines.txt', 'r') as f:
@@ -77,12 +85,7 @@ def preprocess_data(df):
     # Replace 'Yes'/'No' with 1/0 in 'promo' column
     df_encoded['promo'] = df_encoded['promo'].replace({'Yes': 1, 'No': 0})
 
-    # # Ensure all final columns are present in the DataFrame
-    # for col in final_columns:
-    #     if col not in df_encoded.columns:
-    #         df_encoded[col] = 0
-
-    # Create a new DataFrame with concatenated columns
+    # Ensure all final columns are present in the DataFrame
     concatenated_columns = [df_encoded]  # Start with the existing DataFrame
     for col in final_columns:
         if col not in df_encoded.columns:
