@@ -1,6 +1,6 @@
 # Grab Food Delivery Time & Cost Prediction
 
-A Streamlit web application that predicts **delivery time** and **delivery cost** for Grab Food orders using trained Random Forest Regressor models.
+A Streamlit web application that predicts **delivery time** and **delivery cost** for Grab Food orders using the latest feature-engineering pipeline and the best-performing trained models.
 
 **Live App:** https://grab-food-delivery-time-cost-prediction.streamlit.app/
 
@@ -19,14 +19,14 @@ This project is part of **WQD 7007 Big Data Management** group work. The app all
 
 ### Model
 
-Both prediction tasks use a **Random Forest Regressor** (`scikit-learn 1.3.2`), trained separately for each target:
+Both prediction tasks use the **best model selected during the latest retraining** (see `notebooks/training.ipynb`). Models are trained on the reduced feature set and the winner (by held-out test \(R^2\)) is exported for the Streamlit app.
 
 | Target | Model File |
 |---|---|
-| Delivery Time | `rf_best_time.pkl` |
-| Delivery Cost | `rf_best_cost.pkl` |
+| Delivery Time | `xg_best_time.pkl` |
+| Delivery Cost | `xg_best_cost.pkl` |
 
-The models are hosted on OneDrive and downloaded on first run, then cached locally to avoid repeated downloads.
+The app loads local model files when they exist and otherwise downloads the configured deployment artifacts on first run.
 
 ### Input Features
 
@@ -48,33 +48,38 @@ The model expects the following columns in the uploaded CSV:
 | `delivery_by` | Delivery provider (e.g. `GRAB`) |
 | `region` | Region (e.g. `Central`) |
 | `promo_code` | Promo code string |
-| `delivery_time` | Actual delivery time (used as ground truth; dropped before time prediction) |
-| `delivery_cost` | Actual delivery cost (used as ground truth; dropped before cost prediction) |
+| `delivery_time` | Optional ground truth for evaluation |
+| `delivery_cost` | Optional ground truth for evaluation |
 
 ### Model Architecture
 
-Both models are **Random Forest Regressors** tuned with `RandomizedSearchCV`. The best hyperparameters found:
+Training compares classical baselines (Linear / Decision Tree / Random Forest / XGBoost) and then tunes the best tree ensembles. The final selection is made on a held-out **90/10 split (`random_state=42`)** and the chosen models are saved for deployment.
+
+The tuned Random Forest baseline uses:
 
 | Parameter | Time Model | Cost Model |
 |---|---|---|
-| `n_estimators` | 200 | 200 |
-| `max_depth` | None (unlimited) | None (unlimited) |
-| `max_features` | 1.0 | 1.0 |
-| `min_samples_split` | 2 | 2 |
+| `n_estimators` | 300 | 300 |
+| `max_depth` | None | None |
+| `max_features` | `sqrt` | `sqrt` |
+| `min_samples_split` | 10 | 10 |
 | `min_samples_leaf` | 1 | 1 |
 
-Training was performed on Google Colab. The dataset was split into train/test sets and models were fitted using the optimal hyperparameters above.
+The selected production models from the latest notebook run are:
 
-The models were compared against Decision Tree Regressors (default and tuned) before selecting Random Forest as the final choice.
+- **Delivery time**: **XGBoost (tuned)** (`xgboost_tuned`)
+- **Delivery cost**: **Random Forest (tuned)** (`random_forest_tuned`)
 
 ### Preprocessing Pipeline
 
 Before feeding data into the models, the following transformations are applied:
 
-1. **Cuisine one-hot encoding** — the `cuisine` column (stored as a string list) is parsed and expanded into individual binary columns, one per unique cuisine type.
-2. **Categorical encoding** — columns `name`, `address`, `delivery_options`, `loc_type`, `delivery_by`, and `region` are one-hot encoded using `pd.get_dummies`.
-3. **Promo encoding** — `Yes`/`No` values in the `promo` column are mapped to `1`/`0`.
-4. **Column alignment** — any columns expected by the model but absent from the input are added with value `0`, and the final column order is enforced to match training.
+1. **Identity reduction** — `name` becomes `is_chain`, and `address` becomes a capped `mall_or_building_name` bucket instead of a full one-hot identity column.
+2. **Cuisine reduction** — the top 20 cuisines are kept explicitly and all remaining cuisines fall into `Other`.
+3. **Geospatial features** — raw `lat` / `lon` are retained alongside `dist_to_region_centroid` and `grid_restaurant_density`.
+4. **Opening-hours features** — weekly hours, early-open, late-close, and consistency flags are parsed from the JSON string.
+5. **Promo features** — free-delivery, minimum-spend, and promo-discount-type signals are extracted from promo text.
+6. **Stable alignment** — the shared pipeline aligns inputs to the 154-feature training schema and never uses `delivery_time` or `delivery_cost` as model inputs.
 
 ### Prediction Flow
 
@@ -83,13 +88,9 @@ Upload CSV
     │
     ▼
 preprocess_data()
-    │  - Parse cuisine lists → one-hot encode
-    │  - get_dummies on categorical columns
-    │  - Encode promo Yes/No → 1/0
-    │  - Align columns to training schema
-    ▼
-Drop target column (delivery_time or delivery_cost)
-    │
+    │  - Derive reduced cuisine / building buckets
+    │  - Add promo, opening-hours, and geospatial features
+    │  - Align columns to the saved training schema
     ▼
 model.predict()
     │
@@ -110,23 +111,19 @@ All models were evaluated on a held-out test set. Metrics below are from the fin
 
 | Model | MAE (min) | R² | MSE | RMSE (min) |
 |---|---|---|---|---|
-| Decision Tree (default) | 6.855 | 0.544 | 120.432 | 10.974 |
-| Decision Tree (tuned) | 6.303 | 0.634 | 96.768 | 9.837 |
-| Random Forest (default) | 5.539 | 0.702 | 78.762 | 8.875 |
-| **Random Forest (tuned)** | **5.436** | **0.701** | **78.922** | **8.884** |
+| Random Forest (tuned) | 5.0240 | 0.7660 | 59.8434 | 7.7358 |
+| **XGBoost (tuned, selected)** | **4.9122** | **0.7767** | **57.0928** | **7.5560** |
 
-The tuned Random Forest achieves the best overall performance — predictions deviate by ~5.4 minutes on average and explain 70.1% of variance in delivery times.
+The selected tuned XGBoost model reaches **77.7% \(R^2\)** with **4.91 minutes MAE** on the held-out test set.
 
 ### Delivery Cost Prediction
 
 | Model | MAE (SGD) | R² | MSE | RMSE (SGD) |
 |---|---|---|---|---|
-| Decision Tree (default) | 2.913 | 0.405 | 25.777 | 5.077 |
-| Decision Tree (tuned) | 2.836 | 0.465 | 23.210 | 4.818 |
-| Random Forest (default) | 2.495 | 0.609 | 16.949 | 4.117 |
-| **Random Forest (tuned)** | **2.494** | **0.611** | **16.869** | **4.111** |
+| **Random Forest (tuned, selected)** | **2.0731** | **0.7180** | **11.5380** | **3.3968** |
+| XGBoost (tuned) | 2.1550 | 0.7177 | 11.5510 | 3.3987 |
 
-The tuned Random Forest achieves the best performance — predictions deviate by ~$2.49 on average and explain 61.1% of variance in delivery costs.
+Both tuned models perform similarly for delivery cost; the latest notebook run selects tuned Random Forest by a small margin on held-out \(R^2\).
 
 ---
 
@@ -157,10 +154,14 @@ streamlit run grab_app.py
 ```
 .
 ├── grab_app.py          # Streamlit app (prediction interface)
+├── feature_pipeline.py  # Shared feature engineering logic
 ├── requirements.txt     # Python dependencies
+├── feature_artifacts.json
+├── model_metrics.json
+├── scripts/train_phase2_models.py
 ├── test_dataset.csv     # Sample dataset for testing
-├── unique_cuisines.txt  # List of all cuisine types seen during training
-├── other_columns.txt    # Categorical columns to one-hot encode
+├── unique_cuisines.txt  # Top cuisine buckets used in training
+├── other_columns.txt    # Categorical feature families encoded in training
 └── final_columns.txt    # Ordered column list expected by the models
 ```
 
@@ -172,3 +173,5 @@ streamlit run grab_app.py
 - `scikit-learn==1.3.2`
 - `pandas`
 - `requests`
+- `lightgbm`
+- `matplotlib`

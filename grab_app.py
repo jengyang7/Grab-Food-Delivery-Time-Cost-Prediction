@@ -15,16 +15,6 @@ from feature_pipeline import (
 
 st.title('Grab Food Delivery Time & Cost Prediction App')
 
-try:
-    with open('model_metrics.json') as _f:
-        _m = json.load(_f)
-    _time_name = _m.get('delivery_time', {}).get('selected_model', 'lightgbm').replace('_', ' ').title()
-    _cost_name = _m.get('delivery_cost', {}).get('selected_model', 'lightgbm').replace('_', ' ').title()
-    st.write(f'Models: **{_time_name}** (delivery time) · **{_cost_name}** (delivery cost)')
-except Exception:
-    st.write('Model: Phase 2 ensemble winner')
-
-
 @st.cache_data
 def download_and_load_model(url, model_path):
     if not os.path.exists(model_path):
@@ -60,6 +50,37 @@ except (KeyError, FileNotFoundError):
 
 time_model_path = 'xg_best_time.pkl'
 cost_model_path = 'xg_best_cost.pkl'
+
+def _pretty_model_name(selected_model: str) -> str:
+    return (selected_model or '').replace('_', ' ').strip().title() or 'Unknown'
+
+def _infer_model_name_from_path(model_path: str) -> str | None:
+    base = os.path.basename(model_path).lower()
+    if base.startswith('xg_') or 'xgboost' in base:
+        return 'XGBoost Tuned'
+    if base.startswith('rf_') or 'random_forest' in base:
+        return 'Random Forest Tuned'
+    if base.startswith('lgb') or 'lightgbm' in base:
+        return 'LightGBM'
+    return None
+
+try:
+    with open('model_metrics.json') as _f:
+        _m = json.load(_f)
+    _time_name = _pretty_model_name(_m.get('delivery_time', {}).get('selected_model', ''))
+    _cost_name = _pretty_model_name(_m.get('delivery_cost', {}).get('selected_model', ''))
+except Exception:
+    _time_name = 'Selected model'
+    _cost_name = 'Selected model'
+
+_time_inferred = _infer_model_name_from_path(time_model_path)
+_cost_inferred = _infer_model_name_from_path(cost_model_path)
+if _time_inferred:
+    _time_name = _time_inferred
+if _cost_inferred:
+    _cost_name = _cost_inferred
+
+st.write(f'Models: **{_time_name}** (delivery time) · **{_cost_name}** (delivery cost)')
 
 with st.spinner("Loading models, please wait..."):
     try:
@@ -120,7 +141,7 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(
                     "Time model prediction failed. Make sure the deployed model files were retrained "
-                    "together with the Phase 2 feature artifacts.\n\n"
+                    "together with the saved feature artifacts.\n\n"
                     f"Error: {e}"
                 )
                 st.stop()
@@ -141,7 +162,7 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(
                     "Cost model prediction failed. Make sure the deployed model files were retrained "
-                    "together with the Phase 2 feature artifacts.\n\n"
+                    "together with the saved feature artifacts.\n\n"
                     f"Error: {e}"
                 )
                 st.stop()
