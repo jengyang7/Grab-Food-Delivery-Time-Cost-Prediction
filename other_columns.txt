@@ -1,5 +1,5 @@
-name
-address
+mall_or_building_name
+promo_discount_type
 delivery_options
 loc_type
 delivery_by

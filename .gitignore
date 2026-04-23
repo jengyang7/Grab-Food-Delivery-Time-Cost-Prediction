@@ -1,0 +1,11 @@
+# Secrets — never commit
+.streamlit/secrets.toml
+
+# Downloaded model files
+*.pkl
+
+# Python
+__pycache__/
+*.pyc
+.matplotlib-cache/
+.DS_Store
